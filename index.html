@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dragon Plugg Store Viewer</title>
+  <style>
+    :root {
+      --ink: #171717;
+      --muted: #6f6a61;
+      --line: #e8e1d6;
+      --page: #faf8f3;
+      --surface: #ffffff;
+      --amber: #d97620;
+      --red: #c7442f;
+      --green: #2f7d5a;
+      --blue: #1e5e8c;
+      --shadow: 0 18px 50px rgba(35, 28, 20, 0.1);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .shell {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid var(--line);
+      background: rgba(250, 248, 243, 0.94);
+      backdrop-filter: blur(18px);
+    }
+
+    .topbar-inner {
+      width: min(1180px, calc(100% - 32px));
+      min-height: 68px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: max-content;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 42%),
+        #201914;
+      box-shadow: inset 0 -10px 20px rgba(217, 118, 32, 0.22);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    .nav-links span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 99px;
+      background: var(--green);
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 30px 0 56px;
+    }
+
+    .link-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: stretch;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .url-field {
+      min-height: 54px;
+      width: 100%;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: #f4efe7;
+      color: var(--ink);
+      padding: 0 16px;
+      outline: none;
+    }
+
+    .url-field:focus {
+      border-color: rgba(217, 118, 32, 0.7);
+      background: #fff;
+    }
+
+    .primary-btn,
+    .secondary-btn,
+    .icon-btn {
+      border: 0;
+      border-radius: 6px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 800;
+    }
+
+    .primary-btn {
+      min-width: 156px;
+      padding: 0 20px;
+      color: #fff;
+      background: #1f1a16;
+      box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .primary-btn:disabled {
+      cursor: progress;
+      opacity: 0.72;
+    }
+
+    .secondary-btn {
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .icon-btn {
+      width: 44px;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .field-footer {
+      min-height: 32px;
+      padding: 10px 4px 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .field-footer.error {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .storefront {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.92fr);
+      gap: 28px;
+      margin-top: 28px;
+      align-items: start;
+    }
+
+    .gallery {
+      position: sticky;
+      top: 92px;
+    }
+
+    .main-image {
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
+      aspect-ratio: 1 / 1;
+      background: #efe8dc;
+      box-shadow: var(--shadow);
+    }
+
+    .main-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .image-tag {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: #fff;
+      background: rgba(31, 26, 22, 0.82);
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .thumbs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .thumb {
+      aspect-ratio: 1 / 1;
+      padding: 0;
+      border: 2px solid transparent;
+      border-radius: 7px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .thumb.active {
+      border-color: var(--amber);
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .product-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .product-head {
+      padding: 24px 24px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .platform-pill,
+    .seller-badge,
+    .small-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border-radius: 6px;
+      font-weight: 850;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .platform-pill {
+      padding: 8px 11px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 0.82rem;
+    }
+
+    .small-pill {
+      padding: 6px 8px;
+      color: var(--green);
+      background: rgba(47, 125, 90, 0.1);
+      font-size: 0.78rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.65rem, 3vw, 2.55rem);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .subcopy {
+      margin: 12px 0 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .price-row {
+      display: flex;
+      align-items: end;
+      gap: 12px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .price {
+      color: var(--red);
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .price-note {
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .order-box {
+      padding: 22px 24px 24px;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .choice-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .choice {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 14px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 750;
+    }
+
+    .choice.active {
+      border-color: var(--ink);
+      background: #1f1a16;
+      color: #fff;
+    }
+
+    .quantity-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .stepper {
+      display: inline-grid;
+      grid-template-columns: 42px 58px 42px;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .stepper button {
+      border: 0;
+      background: #fff;
+      font-weight: 900;
+      font-size: 1.1rem;
+    }
+
+    .stepper output {
+      display: grid;
+      place-items: center;
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      font-weight: 850;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .buy-btn {
+      min-height: 52px;
+      border: 0;
+      border-radius: 6px;
+      color: #fff;
+      background: var(--red);
+      font-weight: 900;
+    }
+
+    .cart-btn {
+      min-height: 52px;
+      border: 1px solid rgba(199, 68, 47, 0.3);
+      border-radius: 6px;
+      color: var(--red);
+      background: rgba(199, 68, 47, 0.08);
+      font-weight: 900;
+    }
+
+    .seller-card {
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbf7ef;
+    }
+
+    .seller-logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: #1f1a16;
+      font-weight: 900;
+    }
+
+    .seller-name {
+      font-weight: 900;
+    }
+
+    .seller-meta {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 2px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .detail-box {
+      min-height: 112px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 16px;
+    }
+
+    .detail-box strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .detail-box span {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .spec-table {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .spec-line {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      min-height: 48px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .spec-line:last-child {
+      border-bottom: 0;
+    }
+
+    .spec-key,
+    .spec-value {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+    }
+
+    .spec-key {
+      color: var(--muted);
+      background: #fbf7ef;
+      font-weight: 800;
+    }
+
+    .empty-state {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: center;
+      margin-top: 32px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .empty-state h1 {
+      max-width: 620px;
+    }
+
+    .samples {
+      display: grid;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .sample {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      width: 100%;
+      min-height: 48px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbf7ef;
+      color: var(--ink);
+      text-align: left;
+    }
+
+    .preview-stack {
+      display: grid;
+      grid-template-columns: 1fr 0.78fr;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .preview-stack img {
+      width: 100%;
+      aspect-ratio: 1 / 1.15;
+      object-fit: cover;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .preview-stack img:nth-child(2) {
+      transform: translateY(26px);
+    }
+
+    @media (max-width: 940px) {
+      .storefront,
+      .empty-state,
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .gallery {
+        position: static;
+      }
+
+      .preview-stack {
+        max-width: 520px;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .topbar-inner {
+        min-height: 62px;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      main {
+        width: min(100% - 20px, 1180px);
+        padding-top: 16px;
+      }
+
+      .link-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .primary-btn {
+        width: 100%;
+      }
+
+      .product-head,
+      .order-box {
+        padding: 18px;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      .seller-card {
+        grid-template-columns: 42px 1fr;
+      }
+
+      .seller-card .secondary-btn {
+        grid-column: 1 / -1;
+      }
+
+      .spec-line {
+        grid-template-columns: 1fr;
+      }
+
+      .thumbs {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">DP</div>
+          <span>Dragon Plugg</span>
+        </div>
+        <div class="nav-links" aria-label="Store signals">
+          <span><i class="status-dot"></i> China marketplace ready</span>
+          <span>QC photos</span>
+          <span>Agent checkout</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <form class="link-panel" id="linkForm">
+        <input
+          class="url-field"
+          id="productUrl"
+          type="url"
+          inputmode="url"
+          autocomplete="off"
+          placeholder="Paste a 1688, Taobao, Tmall or Weidian product link"
+          aria-label="Product URL"
+        />
+        <button class="primary-btn" id="submitButton" type="submit">View Product</button>
+      </form>
+      <div class="field-footer" id="message">Paste a marketplace link to build a clean store page preview.</div>
+
+      <section class="empty-state" id="emptyState">
+        <div>
+          <span class="small-pill">Storefront preview</span>
+          <h1 style="margin-top: 14px;">Turn marketplace links into a product page your buyers can read fast.</h1>
+          <p class="subcopy">
+            Dragon Plugg detects the source, pulls the visible product ID from the URL, and formats the item into a modern store page layout with gallery, options, price, shipping, and seller details.
+          </p>
+          <div class="samples" aria-label="Sample product links">
+            <button class="sample" type="button" data-sample="https://item.taobao.com/item.htm?id=742819305621">
+              <span>Taobao hoodie product</span>
+              <strong>Try</strong>
+            </button>
+            <button class="sample" type="button" data-sample="https://detail.1688.com/offer/735925531808.html">
+              <span>1688 wholesale offer</span>
+              <strong>Try</strong>
+            </button>
+            <button class="sample" type="button" data-sample="https://weidian.com/item.html?itemID=6492874201">
+              <span>Weidian sneaker listing</span>
+              <strong>Try</strong>
+            </button>
+          </div>
+        </div>
+        <div class="preview-stack" aria-hidden="true">
+          <img src="" alt="" id="previewOne" />
+          <img src="" alt="" id="previewTwo" />
+        </div>
+      </section>
+
+      <section class="storefront" id="storefront" hidden>
+        <div class="gallery">
+          <div class="main-image">
+            <img id="mainImage" alt="Selected product view" />
+            <div class="image-tag" id="imageTag">Verified preview</div>
+          </div>
+          <div class="thumbs" id="thumbs" aria-label="Product images"></div>
+        </div>
+
+        <article class="product-panel">
+          <div class="product-head">
+            <div class="meta-row">
+              <span class="platform-pill" id="platformPill">TAOBAO</span>
+              <span class="small-pill" id="productId">ID 000000</span>
+            </div>
+            <h1 id="productTitle">Product title</h1>
+            <p class="subcopy" id="productDescription">Product description</p>
+            <div class="price-row">
+              <div class="price" id="productPrice">CNY 0</div>
+              <div class="price-note" id="priceNote">Estimated domestic item price</div>
+            </div>
+          </div>
+
+          <div class="order-box">
+            <p class="section-title">Color</p>
+            <div class="choice-grid" id="colorChoices"></div>
+
+            <p class="section-title">Size</p>
+            <div class="choice-grid" id="sizeChoices"></div>
+
+            <div class="quantity-row">
+              <p class="section-title" style="margin:0;">Quantity</p>
+              <div class="stepper" aria-label="Quantity selector">
+                <button type="button" id="minusQty" aria-label="Decrease quantity">-</button>
+                <output id="quantity">1</output>
+                <button type="button" id="plusQty" aria-label="Increase quantity">+</button>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="buy-btn" type="button">Buy Now</button>
+              <button class="cart-btn" type="button">Add to Cart</button>
+            </div>
+
+            <div class="seller-card">
+              <div class="seller-logo" id="sellerLogo">DP</div>
+              <div>
+                <div class="seller-name" id="sellerName">Supplier store</div>
+                <div class="seller-meta" id="sellerMeta">Rating, shipping and source</div>
+              </div>
+              <button class="secondary-btn" type="button">Open Source</button>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="detail-grid" id="detailGrid" hidden>
+        <div class="detail-box">
+          <strong>Inspection</strong>
+          <span id="inspectionText">QC photo request and size check before international shipping.</span>
+        </div>
+        <div class="detail-box">
+          <strong>Shipping</strong>
+          <span id="shippingText">Agent warehouse intake, consolidation, and tracking prepared.</span>
+        </div>
+        <div class="detail-box">
+          <strong>Buyer Note</strong>
+          <span id="buyerText">Live product scraping needs a small backend proxy because marketplace pages block browser-only requests.</span>
+        </div>
+      </section>
+
+      <section class="spec-table" id="specTable" hidden aria-label="Product specifications"></section>
+    </main>
+  </div>
+
+  <script>
+    const assets = {
+      fashion: [
+        imageSvg("Oversized hoodie", "#1f1a16", "#d97620", "HOODIE", "Heavy cotton"),
+        imageSvg("Hoodie back view", "#35302a", "#f0c36c", "BACK", "Embroidery"),
+        imageSvg("Fabric detail", "#736353", "#d9b38c", "DETAIL", "Ribbed cuff"),
+        imageSvg("Fit preview", "#2f4156", "#df8f3a", "FIT", "Streetwear"),
+        imageSvg("Tag closeup", "#5c382f", "#f7d7a8", "TAG", "Batch ready")
+      ],
+      sneaker: [
+        imageSvg("Sneaker side profile", "#f4f0e8", "#c7442f", "SNEAKER", "Premium batch"),
+        imageSvg("Sneaker heel", "#1f1a16", "#e8e1d6", "HEEL", "Clean shape"),
+        imageSvg("Sole detail", "#44546a", "#f0c36c", "SOLE", "Rubber grip"),
+        imageSvg("Box and pair", "#6f2f2f", "#ffffff", "PAIR", "QC set"),
+        imageSvg("Upper detail", "#2f7d5a", "#f4efe7", "UPPER", "Leather grain")
+      ],
+      wholesale: [
+        imageSvg("Wholesale electronics", "#20333b", "#60b7b1", "1688", "Bulk lot"),
+        imageSvg("Cable set", "#5b6270", "#f7d7a8", "CABLES", "Multi pack"),
+        imageSvg("Packaging", "#805a30", "#fff7e6", "BOX", "Export carton"),
+        imageSvg("Accessory detail", "#1e5e8c", "#e9f6ff", "ITEMS", "Assorted"),
+        imageSvg("Warehouse ready", "#2f7d5a", "#f4efe7", "STOCK", "Ready ship")
+      ]
+    };
+
+    const platformData = {
+      taobao: {
+        label: "Taobao",
+        color: "#d97620",
+        category: "fashion",
+        title: "Oversized heavyweight streetwear hoodie",
+        description: "A clean buyer-facing preview for a Taobao apparel listing with premium cotton, relaxed fit, and embroidery-ready product details.",
+        price: 199,
+        seller: "Taobao Select Studio",
+        rating: "4.8 seller score",
+        colors: ["Black", "Washed Grey", "Cream"],
+        sizes: ["S", "M", "L", "XL"],
+        specs: {
+          Source: "Taobao item page",
+          Material: "Heavy cotton blend",
+          Fit: "Oversized",
+          LeadTime: "2-4 days to agent warehouse",
+          Service: "QC photos before shipment"
+        }
+      },
+      tmall: {
+        label: "Tmall",
+        color: "#c7442f",
+        category: "fashion",
+        title: "Brand store cotton hoodie",
+        description: "A Tmall-style product page preview with domestic pricing, selectable options, and clean storefront information for shoppers.",
+        price: 269,
+        seller: "Tmall Flagship Supplier",
+        rating: "Brand store",
+        colors: ["Navy", "Ivory", "Charcoal"],
+        sizes: ["M", "L", "XL", "XXL"],
+        specs: {
+          Source: "Tmall product page",
+          Material: "Cotton fleece",
+          Fit: "Regular relaxed",
+          LeadTime: "2-5 days to agent warehouse",
+          Service: "Brand packaging check"
+        }
+      },
+      weidian: {
+        label: "Weidian",
+        color: "#2f7d5a",
+        category: "sneaker",
+        title: "Premium batch lifestyle sneakers",
+        description: "A Weidian product preview for sneaker buyers, formatted with gallery images, batch notes, sizing, and agent checkout details.",
+        price: 420,
+        seller: "Weidian Batch Depot",
+        rating: "High repeat orders",
+        colors: ["White/Red", "Black/Gum", "Sail"],
+        sizes: ["39", "40", "41", "42", "43", "44", "45"],
+        specs: {
+          Source: "Weidian item page",
+          Upper: "Synthetic leather",
+          Sole: "Rubber cupsole",
+          Batch: "Top quality batch",
+          Service: "QC, box check and measurements"
+        }
+      },
+      "1688": {
+        label: "1688",
+        color: "#1e5e8c",
+        category: "wholesale",
+        title: "Wholesale accessories bundle",
+        description: "A 1688 supplier page preview built for sourcing: minimum order, domestic stock, packaging notes, and reseller-ready details.",
+        price: 59,
+        seller: "1688 Factory Supply",
+        rating: "Factory direct",
+        colors: ["Mixed", "Black", "White"],
+        sizes: ["10 pcs", "50 pcs", "100 pcs"],
+        specs: {
+          Source: "1688 offer page",
+          MOQ: "10 units",
+          Packing: "Bulk carton",
+          LeadTime: "1-3 days to agent warehouse",
+          Service: "Factory order consolidation"
+        }
+      }
+    };
+
+    const form = document.querySelector("#linkForm");
+    const urlInput = document.querySelector("#productUrl");
+    const submitButton = document.querySelector("#submitButton");
+    const message = document.querySelector("#message");
+    const emptyState = document.querySelector("#emptyState");
+    const storefront = document.querySelector("#storefront");
+    const detailGrid = document.querySelector("#detailGrid");
+    const specTable = document.querySelector("#specTable");
+    const quantity = document.querySelector("#quantity");
+    let currentQty = 1;
+
+    document.querySelector("#previewOne").src = assets.sneaker[0];
+    document.querySelector("#previewTwo").src = assets.fashion[0];
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      loadProduct(urlInput.value);
+    });
+
+    document.querySelectorAll("[data-sample]").forEach((button) => {
+      button.addEventListener("click", () => {
+        urlInput.value = button.dataset.sample;
+        loadProduct(urlInput.value);
+      });
+    });
+
+    document.querySelector("#minusQty").addEventListener("click", () => {
+      currentQty = Math.max(1, currentQty - 1);
+      quantity.textContent = currentQty;
+    });
+
+    document.querySelector("#plusQty").addEventListener("click", () => {
+      currentQty = Math.min(99, currentQty + 1);
+      quantity.textContent = currentQty;
+    });
+
+    async function loadProduct(rawUrl) {
+      const parsed = parseMarketplaceUrl(rawUrl);
+      if (!parsed) {
+        showMessage("Paste a valid 1688, Taobao, Tmall or Weidian product link.", true);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const response = await fetch(`/api/product?url=${encodeURIComponent(parsed.sourceUrl)}`);
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Could not read this product link.");
+        }
+
+        const product = normalizeApiProduct(payload.product, parsed);
+        renderProduct(product);
+
+        const fieldList = payload.extraction.fields.length ? payload.extraction.fields.join(", ") : "link details";
+        const note = payload.blocked
+          ? "The source blocked public HTML, so the API showed a structured fallback from the link."
+          : `API gathered: ${fieldList}.`;
+        showMessage(note, payload.blocked);
+      } catch (error) {
+        showMessage(error.message || "The product API could not read this link.", true);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function parseMarketplaceUrl(rawUrl) {
+      if (!rawUrl || !rawUrl.trim()) return null;
+
+      let url;
+      try {
+        url = new URL(rawUrl.trim());
+      } catch (error) {
+        return null;
+      }
+
+      const host = url.hostname.replace(/^www\./, "").toLowerCase();
+      let platform = null;
+
+      if (host.includes("taobao.com")) platform = "taobao";
+      if (host.includes("tmall.com")) platform = "tmall";
+      if (host.includes("weidian.com")) platform = "weidian";
+      if (host.includes("1688.com")) platform = "1688";
+      if (!platform) return null;
+
+      const productId =
+        url.searchParams.get("id") ||
+        url.searchParams.get("itemID") ||
+        url.searchParams.get("itemId") ||
+        url.searchParams.get("offerId") ||
+        (url.pathname.match(/offer\/(\d+)/) || [])[1] ||
+        (url.pathname.match(/item\/(\d+)/) || [])[1] ||
+        "preview-" + Math.floor(100000 + Math.random() * 900000);
+
+      return {
+        platform,
+        productId,
+        sourceUrl: url.href
+      };
+    }
+
+    function buildProduct(parsed) {
+      const base = platformData[parsed.platform];
+      const idDigits = Number(String(parsed.productId).replace(/\D/g, "").slice(-4)) || 1375;
+      const price = Math.max(29, base.price + (idDigits % 37) - 18);
+      const imageSet = assets[base.category];
+
+      return {
+        ...base,
+        id: parsed.productId,
+        sourceUrl: parsed.sourceUrl,
+        price,
+        images: imageSet,
+        title: personalizeTitle(base.title, parsed.productId),
+        sellerCode: base.label.slice(0, 2).toUpperCase()
+      };
+    }
+
+    function normalizeApiProduct(apiProduct, parsed) {
+      const platform = apiProduct.platform || parsed.platform;
+      const base = platformData[platform];
+      const fallback = buildProduct(parsed);
+      const apiImages = Array.isArray(apiProduct.images) ? apiProduct.images.filter(Boolean) : [];
+
+      return {
+        ...fallback,
+        ...apiProduct,
+        label: apiProduct.label || base.label,
+        color: apiProduct.color || base.color,
+        category: apiProduct.category || base.category,
+        sellerCode: apiProduct.sellerCode || base.label.slice(0, 2).toUpperCase(),
+        colors: Array.isArray(apiProduct.colors) && apiProduct.colors.length ? apiProduct.colors : fallback.colors,
+        sizes: Array.isArray(apiProduct.sizes) && apiProduct.sizes.length ? apiProduct.sizes : fallback.sizes,
+        images: apiImages.length ? apiImages : fallback.images,
+        specs: {
+          ...fallback.specs,
+          ...(apiProduct.specs || {})
+        },
+        fallbackImages: fallback.images
+      };
+    }
+
+    function personalizeTitle(title, id) {
+      const cleanId = String(id).replace(/\D/g, "");
+      if (!cleanId) return title;
+      const suffixes = ["ready stock", "agent verified", "popular batch", "fast ship"];
+      return `${title} - ${suffixes[Number(cleanId.slice(-1)) % suffixes.length]}`;
+    }
+
+    function renderProduct(product) {
+      emptyState.hidden = true;
+      storefront.hidden = false;
+      detailGrid.hidden = false;
+      specTable.hidden = false;
+      currentQty = 1;
+      quantity.textContent = currentQty;
+
+      const mainImage = document.querySelector("#mainImage");
+      mainImage.src = product.images[0];
+      mainImage.onerror = () => {
+        mainImage.onerror = null;
+        mainImage.src = (product.fallbackImages || assets[product.category] || assets.fashion)[0];
+      };
+      document.querySelector("#imageTag").textContent = `${product.label} source preview`;
+      document.querySelector("#platformPill").textContent = product.label.toUpperCase();
+      document.querySelector("#platformPill").style.background = product.color;
+      document.querySelector("#productId").textContent = `ID ${product.id}`;
+      document.querySelector("#productTitle").textContent = product.title;
+      document.querySelector("#productDescription").textContent = product.description;
+      document.querySelector("#productPrice").textContent = `CNY ${product.price}`;
+      document.querySelector("#sellerLogo").textContent = product.sellerCode;
+      document.querySelector("#sellerName").textContent = product.seller;
+      document.querySelector("#sellerMeta").textContent = `${product.rating} - ${product.label} source`;
+
+      renderThumbs(product.images, product.fallbackImages || assets[product.category] || assets.fashion);
+      renderChoices("#colorChoices", product.colors);
+      renderChoices("#sizeChoices", product.sizes);
+      renderSpecs(product);
+
+      document.querySelector(".seller-card .secondary-btn").onclick = () => {
+        window.open(product.sourceUrl, "_blank", "noopener");
+      };
+    }
+
+    function renderThumbs(images, fallbackImages) {
+      const thumbs = document.querySelector("#thumbs");
+      thumbs.innerHTML = "";
+
+      images.forEach((src, index) => {
+        const button = document.createElement("button");
+        button.className = `thumb${index === 0 ? " active" : ""}`;
+        button.type = "button";
+        button.setAttribute("aria-label", `View product image ${index + 1}`);
+
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "";
+        img.onerror = () => {
+          img.onerror = null;
+          img.src = fallbackImages[index % fallbackImages.length];
+        };
+        button.appendChild(img);
+
+        button.addEventListener("click", () => {
+          document.querySelector("#mainImage").src = src;
+          document.querySelectorAll(".thumb").forEach((thumb) => thumb.classList.remove("active"));
+          button.classList.add("active");
+        });
+
+        thumbs.appendChild(button);
+      });
+    }
+
+    function renderChoices(selector, choices) {
+      const container = document.querySelector(selector);
+      container.innerHTML = "";
+
+      choices.forEach((choice, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `choice${index === 0 ? " active" : ""}`;
+        button.textContent = choice;
+        button.addEventListener("click", () => {
+          container.querySelectorAll(".choice").forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+        });
+        container.appendChild(button);
+      });
+    }
+
+    function renderSpecs(product) {
+      const specs = {
+        ProductID: product.id,
+        ...product.specs,
+        Price: `CNY ${product.price}`,
+        Checkout: "Agent order, QC review, international shipping"
+      };
+
+      specTable.innerHTML = Object.entries(specs)
+        .map(([key, value]) => `
+          <div class="spec-line">
+            <div class="spec-key">${escapeHtml(splitSpecKey(key))}</div>
+            <div class="spec-value">${escapeHtml(value)}</div>
+          </div>
+        `)
+        .join("");
+    }
+
+    function splitSpecKey(key) {
+      return key.replace(/([a-z])([A-Z])/g, "$1 $2");
+    }
+
+    function showMessage(text, isError) {
+      message.textContent = text;
+      message.classList.toggle("error", isError);
+    }
+
+    function setLoading(isLoading) {
+      submitButton.disabled = isLoading;
+      submitButton.textContent = isLoading ? "Gathering..." : "View Product";
+      showMessage(isLoading ? "Gathering product data through the local API..." : message.textContent, false);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function imageSvg(title, background, accent, label, detail) {
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
+          <defs>
+            <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0" stop-color="${background}"/>
+              <stop offset="1" stop-color="${accent}"/>
+            </linearGradient>
+            <pattern id="p" width="90" height="90" patternUnits="userSpaceOnUse">
+              <path d="M0 90 90 0" stroke="rgba(255,255,255,.12)" stroke-width="5"/>
+            </pattern>
+          </defs>
+          <rect width="900" height="900" fill="url(#g)"/>
+          <rect width="900" height="900" fill="url(#p)" opacity=".45"/>
+          <rect x="92" y="98" width="716" height="704" rx="34" fill="rgba(255,255,255,.16)" stroke="rgba(255,255,255,.32)" stroke-width="4"/>
+          <circle cx="450" cy="335" r="138" fill="rgba(255,255,255,.25)"/>
+          <path d="M250 615c56-112 124-168 203-168s147 56 203 168" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="30" stroke-linecap="round"/>
+          <text x="450" y="352" text-anchor="middle" font-family="Arial, sans-serif" font-size="72" font-weight="800" fill="white">${label}</text>
+          <text x="450" y="705" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="white">${detail}</text>
+          <text x="450" y="760" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="rgba(255,255,255,.82)">${title}</text>
+        </svg>
+      `;
+
+      return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+    }
+  </script>
+</body>
+</html>
