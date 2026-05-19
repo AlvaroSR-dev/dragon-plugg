@@ -7,6 +7,11 @@
   to = "/.netlify/functions/product"
   status = 200
 
+[[redirects]]
+  from = "/api/image"
+  to = "/.netlify/functions/image"
+  status = 200
+
 [[headers]]
   for = "/api/*"
   [headers.values]

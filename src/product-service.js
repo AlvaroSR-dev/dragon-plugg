@@ -159,7 +159,7 @@ async function fetchMarketplaceHtml(sourceUrl, fetchImpl) {
     }
 
     const html = await response.text();
-    if (html.length < 400 || /captcha|login|验证|安全检测|滑块/i.test(html.slice(0, 4000))) {
+    if (html.length < 400 || /captcha|login|\u9a8c\u8bc1|\u5b89\u5168\u68c0\u6d4b|\u6ed1\u5757/i.test(html.slice(0, 4000))) {
       throw new Error("Source returned an anti-bot, login, or captcha page");
     }
 
@@ -238,19 +238,76 @@ function extractProductData(html, parsed) {
     .map((image) => normalizeImageUrl(image, parsed.sourceUrl))
     .filter(Boolean)
     .slice(0, 8);
+  const optionGroups = extractOptionGroups(cleanHtml);
+  const { colors, sizes } = splitKnownOptions(optionGroups);
 
   const specs = {};
   if (seller) specs.Supplier = decodeHtml(seller);
   if (images.length) specs.Images = `${images.length} source image${images.length === 1 ? "" : "s"} found`;
+  if (optionGroups.length) specs.Options = `${optionGroups.length} option group${optionGroups.length === 1 ? "" : "s"} found`;
 
   return compact({
     title: tidyTitle(decodeHtml(title)),
     description: decodeHtml(description),
     price: normalizePrice(price),
     seller: decodeHtml(seller),
-    images,
+    images: images.map(proxyImageUrl),
+    originalImages: images,
+    optionGroups,
+    colors,
+    sizes,
     specs
   });
+}
+
+async function fetchImageResponse(rawUrl, fetchImpl = fetch) {
+  let imageUrl;
+  try {
+    imageUrl = new URL(rawUrl);
+  } catch (error) {
+    return {
+      statusCode: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body: "Invalid image URL"
+    };
+  }
+
+  if (!["http:", "https:"].includes(imageUrl.protocol)) {
+    return {
+      statusCode: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body: "Invalid image URL"
+    };
+  }
+
+  const response = await fetchImpl(imageUrl.href, {
+    redirect: "follow",
+    headers: {
+      Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+      Referer: `${imageUrl.protocol}//${imageUrl.hostname}/`,
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    }
+  });
+
+  if (!response.ok) {
+    return {
+      statusCode: response.status,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body: `Image source returned HTTP ${response.status}`
+    };
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+
+  return {
+    statusCode: 200,
+    isBase64Encoded: true,
+    headers: {
+      "Content-Type": response.headers.get("content-type") || "image/jpeg",
+      "Cache-Control": "public, max-age=86400"
+    },
+    body: Buffer.from(arrayBuffer).toString("base64")
+  };
 }
 
 function extractImageUrls(html) {
@@ -267,6 +324,272 @@ function extractImageUrls(html) {
   return urls
     .map((url) => url.replace(/\\u002F/g, "/").replace(/\\/g, ""))
     .filter((url) => !/sprite|icon|logo|avatar|loading|blank/i.test(url));
+}
+
+function extractOptionGroups(html) {
+  const candidates = [
+    ...jsonValuesAfterKeys(html, [
+      "skuProps",
+      "skuPropertyList",
+      "skuPropsList",
+      "offerSaledPropertyList",
+      "salePropList",
+      "skuPropList",
+      "skuPropsMap"
+    ]),
+    ...parseEmbeddedJsonBlocks(html)
+  ];
+
+  const groups = [];
+
+  for (const candidate of candidates) {
+    collectOptionGroups(candidate, groups);
+  }
+
+  return dedupeOptionGroups(groups).slice(0, 6);
+}
+
+function jsonValuesAfterKeys(html, keys) {
+  const values = [];
+
+  for (const key of keys) {
+    const pattern = new RegExp(`["']?${escapeRegExp(key)}["']?\\s*:`, "gi");
+    let match;
+
+    while ((match = pattern.exec(html))) {
+      const value = readBalancedJsonValue(html, match.index + match[0].length);
+      if (!value) continue;
+
+      const parsed = parseLooseJson(value);
+      if (parsed) values.push(parsed);
+    }
+  }
+
+  return values;
+}
+
+function parseEmbeddedJsonBlocks(html) {
+  const values = [];
+  const patterns = [
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+    /window\.__INIT_DATA\s*=\s*({[\s\S]*?})\s*<\/script>/gi,
+    /window\.__INITIAL_STATE__\s*=\s*({[\s\S]*?})\s*;?/gi
+  ];
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(html))) {
+      const parsed = parseLooseJson(match[1]);
+      if (parsed) values.push(parsed);
+    }
+  }
+
+  return values;
+}
+
+function readBalancedJsonValue(text, startIndex) {
+  let index = startIndex;
+  while (/\s/.test(text[index])) index += 1;
+
+  const open = text[index];
+  const close = open === "{" ? "}" : open === "[" ? "]" : "";
+  if (!close) return "";
+
+  let depth = 0;
+  let inString = false;
+  let quote = "";
+  let escaped = false;
+
+  for (let cursor = index; cursor < text.length; cursor += 1) {
+    const char = text[cursor];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === quote) {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"" || char === "'") {
+      inString = true;
+      quote = char;
+      continue;
+    }
+
+    if (char === open) depth += 1;
+    if (char === close) depth -= 1;
+
+    if (depth === 0) {
+      return text.slice(index, cursor + 1);
+    }
+  }
+
+  return "";
+}
+
+function parseLooseJson(value) {
+  const decoded = decodeHtml(String(value || "").trim())
+    .replace(/\\u002F/g, "/")
+    .replace(/\\"/g, "\"")
+    .replace(/\\\//g, "/");
+
+  const attempts = [
+    decoded,
+    decoded.replace(/'/g, "\""),
+    decoded.replace(/([{,]\s*)([A-Za-z_$][\w$-]*)(\s*:)/g, "$1\"$2\"$3").replace(/'/g, "\"")
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      return JSON.parse(attempt);
+    } catch (error) {
+      // Try the next repair.
+    }
+  }
+
+  return null;
+}
+
+function collectOptionGroups(node, groups, depth = 0) {
+  if (!node || depth > 8) return;
+
+  if (Array.isArray(node)) {
+    const directGroups = node
+      .map(toOptionGroup)
+      .filter((group) => group.values.length);
+
+    if (directGroups.length) {
+      groups.push(...directGroups);
+      return;
+    }
+
+    node.forEach((item) => collectOptionGroups(item, groups, depth + 1));
+    return;
+  }
+
+  if (typeof node !== "object") return;
+
+  const direct = toOptionGroup(node);
+  if (direct.values.length) {
+    groups.push(direct);
+  }
+
+  Object.values(node).forEach((value) => collectOptionGroups(value, groups, depth + 1));
+}
+
+function toOptionGroup(node) {
+  if (!node || typeof node !== "object" || Array.isArray(node)) {
+    return { name: "", values: [] };
+  }
+
+  const name = stringValue(
+    node.name ||
+      node.prop ||
+      node.propName ||
+      node.propertyName ||
+      node.skuPropertyName ||
+      node.attributeName ||
+      node.specName ||
+      node.title
+  );
+
+  const rawValues =
+    node.values ||
+    node.value ||
+    node.items ||
+    node.children ||
+    node.options ||
+    node.skuPropertyValues ||
+    node.propertyValueList ||
+    node.valueList;
+
+  const values = Array.isArray(rawValues)
+    ? rawValues
+        .map((value) =>
+          stringValue(
+            value?.name ||
+              value?.value ||
+              value?.valueName ||
+              value?.text ||
+              value?.title ||
+              value?.label ||
+              value?.specValue ||
+              value?.skuPropertyValueName ||
+              value
+          )
+        )
+        .filter(Boolean)
+    : [];
+
+  return {
+    name: normalizeOptionName(name),
+    values: unique(values.map(cleanOptionValue)).slice(0, 40)
+  };
+}
+
+function splitKnownOptions(optionGroups) {
+  const colors = [];
+  const sizes = [];
+
+  for (const group of optionGroups) {
+    if (/color|colour|颜色|顏色|款式|style/i.test(group.name)) {
+      colors.push(...group.values);
+    }
+
+    if (/size|尺码|尺寸|規格|规格|码数/i.test(group.name)) {
+      sizes.push(...group.values);
+    }
+  }
+
+  return compact({
+    colors: unique(colors).slice(0, 40),
+    sizes: unique(sizes).slice(0, 40)
+  });
+}
+
+function dedupeOptionGroups(groups) {
+  const seen = new Set();
+  const output = [];
+
+  for (const group of groups) {
+    if (!group.name || group.values.length < 1) continue;
+    const key = `${group.name.toLowerCase()}::${group.values.join("|").toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(group);
+  }
+
+  return output;
+}
+
+function normalizeOptionName(value) {
+  const clean = cleanOptionValue(value);
+  if (/颜色|顏色/i.test(clean)) return "Color";
+  if (/尺码|尺寸|码数/i.test(clean)) return "Size";
+  if (/规格|規格/i.test(clean)) return "Specification";
+  if (/款式/i.test(clean)) return "Style";
+  return clean;
+}
+
+function cleanOptionValue(value) {
+  return decodeHtml(value)
+    .replace(/\s+/g, " ")
+    .replace(/^[：:\-]+|[：:\-]+$/g, "")
+    .trim();
+}
+
+function stringValue(value) {
+  if (value == null) return "";
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  return "";
+}
+
+function proxyImageUrl(imageUrl) {
+  return `/api/image?url=${encodeURIComponent(imageUrl)}`;
 }
 
 function metaContent(html, attrName, attrValue) {
@@ -322,7 +645,7 @@ function normalizePrice(price) {
 
 function tidyTitle(title) {
   return String(title || "")
-    .replace(/\s*[-_]\s*(淘宝网|Tmall|天猫|1688|Weidian|微店).*$/i, "")
+    .replace(/\s*[-_]\s*(\u6dd8\u5b9d\u7f51|Tmall|\u5929\u732b|1688|Weidian|\u5fae\u5e97).*$/i, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -359,6 +682,7 @@ function escapeRegExp(value) {
 
 module.exports = {
   getProductPayload,
+  fetchImageResponse,
   parseMarketplaceUrl,
   extractProductData,
   fallbackProduct

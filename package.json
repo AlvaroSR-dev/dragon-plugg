@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "netlify dev",
-    "check": "node --check server.js && node --check src/product-service.js && node --check netlify/functions/product.js"
+    "check": "node --check server.js && node --check src/product-service.js && node --check netlify/functions/product.js && node --check netlify/functions/image.js"
   },
   "engines": {
     "node": ">=18"

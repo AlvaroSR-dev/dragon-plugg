@@ -734,11 +734,7 @@
           </div>
 
           <div class="order-box">
-            <p class="section-title">Color</p>
-            <div class="choice-grid" id="colorChoices"></div>
-
-            <p class="section-title">Size</p>
-            <div class="choice-grid" id="sizeChoices"></div>
+            <div id="optionGroups"></div>
 
             <div class="quantity-row">
               <p class="section-title" style="margin:0;">Quantity</p>
@@ -1024,6 +1020,7 @@
         sellerCode: apiProduct.sellerCode || base.label.slice(0, 2).toUpperCase(),
         colors: Array.isArray(apiProduct.colors) && apiProduct.colors.length ? apiProduct.colors : fallback.colors,
         sizes: Array.isArray(apiProduct.sizes) && apiProduct.sizes.length ? apiProduct.sizes : fallback.sizes,
+        optionGroups: normalizeOptionGroups(apiProduct, fallback),
         images: apiImages.length ? apiImages : fallback.images,
         specs: {
           ...fallback.specs,
@@ -1066,8 +1063,7 @@
       document.querySelector("#sellerMeta").textContent = `${product.rating} - ${product.label} source`;
 
       renderThumbs(product.images, product.fallbackImages || assets[product.category] || assets.fashion);
-      renderChoices("#colorChoices", product.colors);
-      renderChoices("#sizeChoices", product.sizes);
+      renderOptionGroups(product.optionGroups);
       renderSpecs(product);
 
       document.querySelector(".seller-card .secondary-btn").onclick = () => {
@@ -1104,20 +1100,47 @@
       });
     }
 
-    function renderChoices(selector, choices) {
-      const container = document.querySelector(selector);
+    function normalizeOptionGroups(apiProduct, fallback) {
+      if (Array.isArray(apiProduct.optionGroups) && apiProduct.optionGroups.length) {
+        return apiProduct.optionGroups
+          .map((group) => ({
+            name: group.name || "Option",
+            values: Array.isArray(group.values) ? group.values.filter(Boolean) : []
+          }))
+          .filter((group) => group.values.length);
+      }
+
+      return [
+        { name: "Color", values: fallback.colors },
+        { name: "Size", values: fallback.sizes }
+      ];
+    }
+
+    function renderOptionGroups(groups) {
+      const container = document.querySelector("#optionGroups");
       container.innerHTML = "";
 
-      choices.forEach((choice, index) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `choice${index === 0 ? " active" : ""}`;
-        button.textContent = choice;
-        button.addEventListener("click", () => {
-          container.querySelectorAll(".choice").forEach((item) => item.classList.remove("active"));
-          button.classList.add("active");
+      groups.forEach((group) => {
+        const title = document.createElement("p");
+        title.className = "section-title";
+        title.textContent = group.name;
+
+        const choices = document.createElement("div");
+        choices.className = "choice-grid";
+
+        group.values.forEach((choice, index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `choice${index === 0 ? " active" : ""}`;
+          button.textContent = choice;
+          button.addEventListener("click", () => {
+            choices.querySelectorAll(".choice").forEach((item) => item.classList.remove("active"));
+            button.classList.add("active");
+          });
+          choices.appendChild(button);
         });
-        container.appendChild(button);
+
+        container.append(title, choices);
       });
     }
 

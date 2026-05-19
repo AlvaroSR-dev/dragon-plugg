@@ -1,7 +1,7 @@
 const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const { getProductPayload } = require("./src/product-service");
+const { fetchImageResponse, getProductPayload } = require("./src/product-service");
 
 const PORT = Number(process.env.PORT || 4174);
 const ROOT = __dirname;
@@ -24,6 +24,12 @@ const server = http.createServer(async (req, res) => {
     if (requestUrl.pathname === "/api/product") {
       const result = await getProductPayload(requestUrl.searchParams.get("url") || "");
       sendJson(res, result.statusCode, result.body);
+      return;
+    }
+
+    if (requestUrl.pathname === "/api/image") {
+      const result = await fetchImageResponse(requestUrl.searchParams.get("url") || "");
+      sendRaw(res, result);
       return;
     }
 
@@ -82,4 +88,14 @@ function sendText(res, statusCode, text) {
     "Cache-Control": "no-store"
   });
   res.end(text);
+}
+
+function sendRaw(res, result) {
+  const body = result.isBase64Encoded ? Buffer.from(result.body, "base64") : Buffer.from(result.body || "");
+
+  res.writeHead(result.statusCode, {
+    ...(result.headers || {}),
+    "Content-Length": body.length
+  });
+  res.end(body);
 }
